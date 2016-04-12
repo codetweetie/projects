@@ -24,6 +24,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+$string['avgresult'] = 'Average Result';
 $string['yourresult'] = 'Your Result';
 $string['graphtitle'] = 'Student Performance Graph';
 $string['correctanswers'] = 'Correct Answers';

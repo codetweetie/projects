@@ -178,11 +178,16 @@ $report = new quiz_report_graph_attempts_overview_report();
 $attemptsdata = $report->display($quiz, $cm, $course);
 
 $questionusageids = $xdata = array();
-$quid_cnt = 1;
 foreach ($attemptsdata as $questionusageid => $attemptdata) {
-	$xdata[] = $quid_cnt++;
 	$questionusageids[] = $questionusageid;
 }
+
+$quid_cnt = 1;
+$highest_num_attempts = report_quiz_get_highest_attemtps($quiz);
+for($i = 0; $i < $highest_num_attempts; $i++) {
+	$xdata[] = $quid_cnt++;
+}
+//error_log('xd='.print_r($xdata, true));
 $line->x_data = $xdata;
 
 $line->y_format['ownattempt'] = array(
@@ -190,15 +195,40 @@ $line->y_format['ownattempt'] = array(
     'line' => 'line',
     'legend' => get_string('yourresult', 'report_quiz')
 );
+$line->y_format['avgattempt'] = array(    'colour' => 'green','line' => 'line','legend' => get_string('avgresult', 'report_quiz'));
 
 $questions = $report->questions;
 //print '<pre>ques=';print_r($questions); print'</pre>';
 $students = array($USER->id);
 $line->y_data['ownattempt'] = report_quiz_correct_answers_count($quizid, $students, $questionusageids);
-//print '<pre>ydata=';print_r($line->y_data['ownattempt']); print'</pre>';
+$line->y_data['avgattempt'] = report_quiz_correct_answers_avg_count($quizid);
 
-$line->parameter['y_axis_gridlines'] = max($line->y_data['ownattempt']) + 1;
-$line->y_order = array('ownattempt');
+$ownattempt_cnt = count($line->y_data['ownattempt']);
+$avgattempt_cnt = count($line->y_data['avgattempt']);
+
+if ($ownattempt_cnt > $avgattempt_cnt) {
+	for($i = $avgattempt_cnt; $i < $ownattempt_cnt; $i++) {
+		$line->y_data['avgattempt'][$i] = null;
+	}
+} else if ($avgattempt_cnt > $ownattempt_cnt) {
+	for($i = $ownattempt_cnt; $i < $avgattempt_cnt; $i++) {
+		$line->y_data['ownattempt'][$i] = null;
+	}
+}
+
+//print '<pre>ydata=';print_r($line->y_data['ownattempt']); print'</pre>';
+//error_log( '<pre>ydata-ownattempt=');error_log(print_r($line->y_data['ownattempt'], true)); error_log('</pre>');
+//error_log( '<pre>ydata-avgattempt=');error_log(print_r($line->y_data['avgattempt'], true)); error_log('</pre>');
+
+$line->parameter['y_axis_gridlines'] = max(
+										array(
+											max($line->y_data['ownattempt'])
+											, max($line->y_data['avgattempt']) 
+											)
+										) + 1;
+$line->y_order = array(
+'avgattempt',
+ 'ownattempt');
 //$line->parameter['inner_border']      = 'none';
 $line->parameter['y_min_left']        = 0;
 $line->parameter['y_resolution_left'] = 0;
@@ -264,9 +294,42 @@ function report_quiz_correct_answers_count($quizid, $students, $questionusageids
 			$correct_answer_count[] = 0;
 		}
 	}
-    
 	//print '<pre>correct_answer_count=';print_r($correct_answer_count); print'</pre>';
 
     return $correct_answer_count;
+}
 
+function report_quiz_get_highest_attemtps($quiz) {
+	global $DB;
+	
+	list($quizid_in, $quiz_params) = $DB->get_in_or_equal($quiz->id, SQL_PARAMS_NAMED, 'quizid');
+	
+	$highestattempts = $DB->get_records_sql(
+		"SELECT MAX(y.cnt) highest_num_attempts FROM (SELECT COUNT(attempt) cnt FROM mdl_quiz_attempts WHERE state='finished' AND quiz $quizid_in GROUP BY userid  ) y ", 
+          $quiz_params);
+    //print '<pre>';print_r($highestattempts);print '</pre>';
+	if (isset($highestattempts)) {
+		foreach ($highestattempts as $attempt) {
+			return $attempt->highest_num_attempts;
+		}
+	}
+	return 0;
+}
+
+function report_quiz_correct_answers_avg_count($quizid) {
+	global $DB;
+	
+	list($quizid_in, $quiz_params) = $DB->get_in_or_equal($quizid, SQL_PARAMS_NAMED, 'quizid');
+	
+	$avgattempts = $DB->get_records_sql(
+		"SELECT attempt, avg(sumgrades) avg FROM mdl_quiz_attempts WHERE state='finished' AND quiz $quizid_in GROUP BY attempt ", 
+          $quiz_params);
+
+	$avgattemptgrades = array();
+	if (isset($avgattempts)) {
+		foreach ($avgattempts as $avgattempt) {
+			$avgattemptgrades[] = $avgattempt->avg;
+		}
+	}
+	return $avgattemptgrades;
 }
