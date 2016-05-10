@@ -192,10 +192,10 @@ $line->x_data = $xdata;
 
 $line->y_format['ownattempt'] = array(
     'colour' => 'red',
-    'line' => 'line',
+    'line' => 'brush',
     'legend' => get_string('yourresult', 'report_quiz')
 );
-$line->y_format['avgattempt'] = array(    'colour' => 'green','line' => 'line','legend' => get_string('avgresult', 'report_quiz'));
+$line->y_format['avgattempt'] = array(    'colour' => 'green','line' => 'brush','legend' => get_string('avgresult', 'report_quiz'));
 
 $questions = $report->questions;
 //print '<pre>ques=';print_r($questions); print'</pre>';

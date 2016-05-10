@@ -56,7 +56,7 @@ $PAGE->set_url('/report/quiz/index.php', array('id' => $id));
 $PAGE->set_pagelayout('admin');
 
 // Get course details.
-$course = null;
+/*$course = null;
 if ($id) {
     $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
     require_login($course);
@@ -65,14 +65,38 @@ if ($id) {
     require_login();
     $context = context_system::instance();
     $PAGE->set_context($context);
-}
+}*/
 
-$canviewownquizreport = has_capability('report/quiz:viewownreport', $context);
-$canviewquizreports = has_capability('mod/quiz:viewreports', $context);
-if (!$canviewquizreports || !$canviewownquizreport) {// minimum capability required is a student mode
-   require_capability('report/quiz:viewownreport', $context);
-}
+$userid = $USER->id;  // Owner of the page
+$context = context_system::instance();
+$PAGE->set_context($context);
+$course = null;
+$canviewquizreports = $canviewownquizreport = false;
+//print '<pre>access=';print_r($USER->access);print '</pre>';
 
+if ($quizid != 0) {
+
+	if (!$quiz = $DB->get_record('quiz', array('id' => $quizid))) {
+		print_error('invalidquizid', 'quiz');
+	}
+	//print '<pre>quiz=';print_r($quiz);print '</pre>';
+   //prepare for the table data
+   if (!$course = $DB->get_record('course', array('id' => $quiz->course))) {
+        print_error('invalidcourseid');
+    }
+    if (!$cm = get_coursemodule_from_instance("quiz", $quiz->id, $course->id)) {
+        print_error('invalidcoursemodule');
+    }
+
+    $context = context_course::instance($course->id);
+
+	$canviewownquizreport = has_capability('report/quiz:viewownreport', $context);
+	$canviewquizreports = has_capability('mod/quiz:viewreports', $context);
+
+	if (!$canviewquizreports || !$canviewownquizreport) {// minimum capability required is a student mode
+	   require_capability('report/quiz:viewownreport', $context);
+	}
+}
 // Before we close session, make sure we have editing information in session.
 $adminediting = optional_param('adminedit', -1, PARAM_BOOL);
 if ($PAGE->user_allowed_editing() && $adminediting != -1) {
@@ -80,16 +104,13 @@ if ($PAGE->user_allowed_editing() && $adminediting != -1) {
 }
 
 $strquiz = get_string('quiz', 'report_quiz');
+$strquizreport = get_string('pluginname', 'report_quiz');
+
 $stradministration = get_string('administration');
 $strreports = get_string('reports');
 
-if (empty($course) || ($course->id == $SITE->id)) {
-    admin_externalpage_setup('reportquiz', '', null, '', array('pagelayout' => 'report'));
-    $PAGE->set_title($SITE->shortname .': '. $strquiz);
-} else {
-    $PAGE->set_title($course->shortname .': '. $strquiz);
-    $PAGE->set_heading($course->fullname);
-}
+$PAGE->set_title($SITE->shortname .': '. $strquizreport);
+$PAGE->set_heading($SITE->shortname .': '. $strquizreport );
 
 echo $OUTPUT->header();
 
@@ -107,26 +128,15 @@ if ($quizid != 0) {
    	$event->trigger();
    }
 
-   //prepare for the table data
-   if (!$quiz = $DB->get_record('quiz', array('id' => $quizid))) {
-   	print_error('invalidquizid', 'quiz');
-   }
-   if (!$course = $DB->get_record('course', array('id' => $quiz->course))) {
-        print_error('invalidcourseid');
-    }
-    if (!$cm = get_coursemodule_from_instance("quiz", $quiz->id, $course->id)) {
-        print_error('invalidcoursemodule');
-    }
-
    $mode = '';
-   if (!$canviewquizreports) { //teacher mode
-   	$mode = 'own_';
-   }
+	if (!$canviewquizreports) { //teacher mode
+		$mode = 'own_';
+	}
 
    $reportclassname = 'quiz_' . $mode . 'attempts_overview_report';
 
    if (!class_exists($reportclassname)) {
-   	print_error('preprocesserror', 'quiz');
+		print_error('preprocesserror', 'quiz');
    }
 
    $report = new $reportclassname();

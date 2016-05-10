@@ -57,22 +57,27 @@ function report_quiz_print_filter_form($course, $roleid, $quizid, $canviewquizre
     global $DB;
 
     // TODO: we need a new list of roles that are visible here.
-    $modinfo = get_fast_modinfo($course);
+    //$modinfo = get_fast_modinfo($course);
 
     //print '<pre>';print_r($modinfo);print '</pre>';
 
     $quizzes = array();
-    foreach ($modinfo->instances['quiz'] as $cm) {
+    /*foreach ($modinfo->instances['quiz'] as $cm) {
         // Skip modules such as label which do not actually have links;
         // this means there's nothing to participate in.
     	  if (!$cm->has_view()) {
 	      continue;
         }
 	  $quizzes[$cm->instance] = format_string($cm->name);
-    }
+    }*/
+    $sql = "select * from {quiz}";
+    $result = $DB->get_records_sql($sql);
+    foreach($result as $res){
+	$quizzes[$res->id] = format_string($res->name);
+	}
 
     echo '<form class="quizselectform" action="index.php" method="get"><div>'."\n".
-        '<input type="hidden" name="id" value="'.$course->id.'" />'."\n";
+        "\n";
     echo '<label style="display:inline-block;" for="menuquizid">'.get_string('selectquiz', 'report_quiz').'</label>'."\n";
     echo html_writer::select($quizzes, 'quizid', $quizid);
 
